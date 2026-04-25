@@ -97,9 +97,7 @@ class Door2Door(Environment):
         seed = task_spec.get("seed", 0)
         self.rng = random.Random(hash((self.race_id, seed)) & 0xFFFFFFFF)
 
-        path = Path("data") / f"{self.race_id}.parquet"
-        if not path.exists():
-            path = Path("/orwd_data") / f"{self.race_id}.parquet"
+        path = Path(__file__).parent / "data" / f"{self.race_id}.parquet"
         self.precincts = pd.read_parquet(path).set_index("precinct_id").to_dict("index")
         self.total_voters = sum(p["n_voters"] for p in self.precincts.values())
 
