@@ -283,7 +283,6 @@ class Door2Door(Environment):
 
     @tool
     def advance_week(self, params: _Empty) -> ToolOutput:
-        prev = self._expected_share()
         self.week += 1
         finished = self.week >= self.weeks_total
 
@@ -292,7 +291,7 @@ class Door2Door(Environment):
         else:
             new = self._expected_share()
 
-        reward = new - prev
+        reward = new - self.baseline_share
 
         if not finished:
             poll = max(0.0, min(1.0, self.rng.gauss(new, POLL_NOISE)))
