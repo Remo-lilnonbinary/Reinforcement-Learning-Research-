@@ -12,8 +12,6 @@ from openreward.environments import (
 
 SEGMENTS = ["hard_opp", "soft_opp", "swing", "soft_sup", "hard_sup_high", "hard_sup_low"]
 
-# Vote share shift per contact. Kalla & Broockman 2018: persuasion is near-zero
-# for general elections, with measurable effect concentrated in swing voters.
 PERSUASION = {
     "hard_opp": 0.0,
     "soft_opp": -0.005,
@@ -23,9 +21,6 @@ PERSUASION = {
     "hard_sup_low": 0.0,
 }
 
-# Turnout-derived vote share lift per contact, for contacts inside the GOTV window.
-# Gerber & Green 2000: ~6pp turnout lift on receptive segments. Hard partisans
-# negative because mobilising them is wasted *or* turns out their opponents.
 GOTV = {
     "hard_opp": -0.040,
     "soft_opp": -0.020,
@@ -35,23 +30,13 @@ GOTV = {
     "hard_sup_low": 0.045,
 }
 
-# Bhatti et al 2024 meta-analysis: high-salience races attenuate effects 33-76%.
 SALIENCE = 0.5
-
-# Persuasion effects fade. 3-week half-life is the central estimate from
-# replication studies summarised in Kalla & Broockman.
 HALF_LIFE = 3.0
-
-# GOTV only counts if contact is within this many weeks of election day.
 GOTV_WINDOW = 2
-
 DOORS_PER_HOUR = 30
 CONTACT_RATE = 0.35
 HOURS_PER_CANVASSER = 30
-
-# Productivity by weeks of experience. Brand new = useless that first week.
 PRODUCTIVITY = [0.0, 0.4, 0.7, 1.0]
-
 POLL_NOISE = 0.02
 
 
@@ -102,9 +87,9 @@ class Door2Door(Environment):
         self.total_voters = sum(p["n_voters"] for p in self.precincts.values())
 
         self.week = 0
-        self.canvassers = []  # list of {hire_week}
-        self.contacts = []    # list of {week, precinct_id, mode, segment, contacts}
-        self.polls = []       # list of (week, observed_share)
+        self.canvassers = []
+        self.contacts = []
+        self.polls = []
 
     @classmethod
     def list_splits(cls):
@@ -128,8 +113,6 @@ class Door2Door(Environment):
             {"race_id": r, "candidate": c, "weeks": 12, "baseline_share": s, "seed": k}
             for r, c, s in races for k in range(5)
         ]
-
-    # ---- simulator ----
 
     def _hours_available(self):
         total = 0.0
@@ -163,34 +146,40 @@ class Door2Door(Environment):
 
         return max(0.0, min(1.0, share))
 
-    # ---- prompt ----
-
     def get_prompt(self) -> List[TextBlock]:
+        sample_ids = list(self.precincts.keys())[:3]
         return [TextBlock(text=(
             f"You are running the ground game for {self.candidate} in {self.race_id}. "
-        f"You have {self.weeks_total} weeks until election day. Starting share: {self.baseline_share:.3f}. "
-        f"There are {len(self.precincts)} precincts.\n\n"
-        f"You must complete all {self.weeks_total} weeks. Do not stop before week {self.weeks_total}. "
-        f"After every action, immediately take the next action. Never wait for confirmation. "
-        f"Your job is to maximise final vote share. Each canvasser becomes productive after a week of training and contributes ~{HOURS_PER_CANVASSER} hours/wk at full productivity.\n\n"
-        f"Tools:\n"
-        f"  view_state: current week, hires, hours, latest poll\n"
-        f"  view_precinct(id): demographics + segment mix for one precinct\n"
-        f"  hire_canvassers(count): hires; productive next week\n"
-        f"  assign_canvassers(precinct_id, hours, mode, target_segment): deploy hours\n"
-        f"      mode='persuasion' shifts swing voters; effect decays with 3-week half-life\n"
-        f"      mode='gotv' boosts turnout but only counts in the final 2 weeks\n"
-        f"      target_segment is one of: {', '.join(SEGMENTS)}\n"
-        f"  log(note): record reasoning, no effect\n"
-        f"  advance_week: settles the week, drops a poll, returns reward = change in expected share\n\n"
-        f"Strategy: hire early so canvassers are productive; persuade swing voters in mid-campaign; "
-        f"do GOTV on hard_sup_low in the final 2 weeks.\n\n"
-        f"Reward = change in expected vote share each week. "
-        f"Begin now by viewing your state, then act. Continue until week {self.weeks_total}."
-    ))]
-        
+            f"You have {self.weeks_total} weeks until election day. Starting share: {self.baseline_share:.3f}. "
+            f"There are {len(self.precincts)} precincts, with IDs like {', '.join(sample_ids)}. "
+            f"Call list_precincts to see them all.\n\n"
+            f"You must complete all {self.weeks_total} weeks. Do not stop before week {self.weeks_total}. "
+            f"After every action, immediately take the next action. Never wait for confirmation. "
+            f"Your job is to maximise final vote share. Each canvasser becomes productive after a week of training and contributes ~{HOURS_PER_CANVASSER} hours/wk at full productivity.\n\n"
+            f"Tools:\n"
+            f"  view_state: current week, hires, hours, latest poll\n"
+            f"  list_precincts: lists every precinct with its key stats\n"
+            f"  view_precinct(precinct_id): demographics + segment mix for one precinct\n"
+            f"  hire_canvassers(count): hires; productive next week\n"
+            f"  assign_canvassers(precinct_id, hours, mode, target_segment): deploy hours\n"
+            f"      mode='persuasion' shifts swing voters; effect decays with 3-week half-life\n"
+            f"      mode='gotv' boosts turnout but only counts in the final 2 weeks\n"
+            f"      target_segment is one of: {', '.join(SEGMENTS)}\n"
+            f"  log(note): record reasoning, no effect\n"
+            f"  advance_week: settles the week, drops a poll, returns reward = change in expected share\n\n"
+            f"Strategy: hire early so canvassers are productive; persuade swing voters in mid-campaign; "
+            f"do GOTV on hard_sup_low in the final 2 weeks.\n\n"
+            f"Reward = change in expected vote share each week. "
+            f"Begin now by listing precincts, then act. Continue until week {self.weeks_total}."
+        ))]
 
-    # ---- tools ----
+    @tool
+    def list_precincts(self, params: _Empty) -> ToolOutput:
+        rows = []
+        for pid, p in self.precincts.items():
+            rows.append(f"  {pid}  lean={p['baseline_lean']:.2f}  swing={p['swing']:.2f}  hard_sup_low={p['hard_sup_low']:.2f}  voters={p['n_voters']}  ({p['density']})")
+        text = f"all {len(self.precincts)} precincts:\n" + "\n".join(rows)
+        return ToolOutput(blocks=[TextBlock(text=text)], reward=0.0, finished=False)
 
     @tool
     def view_state(self, params: _Empty) -> ToolOutput:
@@ -279,7 +268,6 @@ class Door2Door(Environment):
         finished = self.week >= self.weeks_total
 
         if finished:
-            # one realisation draw at election day
             new = max(0.0, min(1.0, self.rng.gauss(self._expected_share(), POLL_NOISE)))
         else:
             new = self._expected_share()
