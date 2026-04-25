@@ -35,9 +35,9 @@ CSV_REP_COLS = {
 # for general elections, with measurable effect concentrated in swing voters.
 PERSUASION = {
     "hard_opp": 0.0,
-    "soft_opp": -0.005,
-    "swing": 0.030,
-    "soft_sup": 0.005,
+    "soft_opp": -0.10,
+    "swing": 0.60,
+    "soft_sup": 0.10,
     "hard_sup": 0.0,
     "low_prop_sup": 0.0,
 }
@@ -45,12 +45,12 @@ PERSUASION = {
 # Turnout-derived vote share lift per contact, for contacts in the GOTV window.
 # Gerber & Green 2000: ~6pp turnout lift on receptive segments.
 GOTV = {
-    "hard_opp": -0.040,
-    "soft_opp": -0.020,
-    "swing": 0.005,
-    "soft_sup": 0.015,
+    "hard_opp": -0.80,
+    "soft_opp": -0.40,
+    "swing": 0.10,
+    "soft_sup": 0.30,
     "hard_sup": 0.0,
-    "low_prop_sup": 0.045,
+    "low_prop_sup": 0.90,
 }
 
 SALIENCE = 0.5
