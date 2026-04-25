@@ -80,7 +80,7 @@ class HireParams(BaseModel):
 
 
 class AssignParams(BaseModel):
-    hours: float = Field(..., gt=0, le=10000)
+    hours: float = Field(..., gt=0, le=50000)
     mode: str
     target_segment: str
     class Config:
