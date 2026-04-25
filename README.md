@@ -29,7 +29,6 @@ Claude Sonnet 4.5 on IA-03 2018 (Axne vs Young, seed 0):
 | 12 | GOTV on low_prop_sup (3,015 contacts) | +0.0300 | **0.526** |
 
 - Baseline: 49.6% → Final: 52.6% (+3.0pp)
-- 48 tool calls across 12 weeks
 - The agent independently discovered the optimal three-phase structure: hire early, persuade swing mid-campaign, GOTV low-propensity supporters in the final two weeks
 - Rewards grew steadily through the persuasion phase, dipped when the agent pivoted segments (old contacts decaying), then spiked when GOTV landed in the final window
 
