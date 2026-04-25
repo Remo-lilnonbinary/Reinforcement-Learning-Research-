@@ -179,22 +179,20 @@ class Door2Door(Environment):
         return sum(c["hours"] for c in self.contacts if c["week"] == self.week)
 
     def _expected_share(self):
-    # Effective vote-shifts per contact; divide by expected actual voters,
-    # not VAP. Roughly half of VAP turns out in midterms, ~60% in presidentials.
-    turnout_estimate = 0.55
-    effective_voters = self.total_voters * turnout_estimate
+        turnout_estimate = 0.55
+        effective_voters = self.total_voters * turnout_estimate
 
-    share = self.baseline_share
-    for c in self.contacts:
-        wks_to_election = self.weeks_total - c["week"]
-        if c["mode"] == "persuasion":
-            decay = 0.5 ** (max(0, wks_to_election) / HALF_LIFE)
-            effect = PERSUASION.get(c["segment"], 0.0)
-            share += (c["contacts"] * effect * decay) / effective_voters
-        elif c["mode"] == "gotv" and wks_to_election <= GOTV_WINDOW:
-            effect = GOTV.get(c["segment"], 0.0)
-            share += (c["contacts"] * effect) / effective_voters
-    return max(0.0, min(1.0, share))
+        share = self.baseline_share
+        for c in self.contacts:
+            wks_to_election = self.weeks_total - c["week"]
+            if c["mode"] == "persuasion":
+                decay = 0.5 ** (max(0, wks_to_election) / HALF_LIFE)
+                effect = PERSUASION.get(c["segment"], 0.0)
+                share += (c["contacts"] * effect * decay) / effective_voters
+            elif c["mode"] == "gotv" and wks_to_election <= GOTV_WINDOW:
+                effect = GOTV.get(c["segment"], 0.0)
+                share += (c["contacts"] * effect) / effective_voters
+        return max(0.0, min(1.0, share))
 
     def get_prompt(self) -> List[TextBlock]:
         seg_lines = "\n".join(f"  {k}: {v:.3f}" for k, v in self.segments.items())
