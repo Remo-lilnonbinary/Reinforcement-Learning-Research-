@@ -185,8 +185,9 @@ class Door2Door(Environment):
         share = self.baseline_share
         for c in self.contacts:
             wks_to_election = self.weeks_total - c["week"]
+            weeks_since = self.week - c["week"]
             if c["mode"] == "persuasion":
-                decay = 0.5 ** (max(0, wks_to_election) / HALF_LIFE)
+                decay = 0.5 ** (weeks_since / HALF_LIFE)
                 effect = PERSUASION.get(c["segment"], 0.0)
                 share += (c["contacts"] * effect * decay) / effective_voters
             elif c["mode"] == "gotv" and wks_to_election <= GOTV_WINDOW:
