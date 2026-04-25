@@ -167,22 +167,28 @@ class Door2Door(Environment):
 
     def get_prompt(self) -> List[TextBlock]:
         return [TextBlock(text=(
-            f"You're running the ground game for {self.candidate} in {self.race_id}. "
-            f"You have {self.weeks_total} weeks. Starting share: {self.baseline_share:.3f}. "
-            f"There are {len(self.precincts)} precincts. "
-            f"Each canvasser becomes productive after a week of training and contributes ~{HOURS_PER_CANVASSER} hours/wk at full productivity.\n\n"
-            f"Tools:\n"
-            f"  view_state: current week, hires, hours, latest poll\n"
-            f"  view_precinct(id): demographics + segment mix for one precinct\n"
-            f"  hire_canvassers(count): hires; productive next week\n"
-            f"  assign_canvassers(precinct_id, hours, mode, target_segment): deploy hours\n"
-            f"      mode='persuasion' shifts swing voters; effect decays with 3-week half-life\n"
-            f"      mode='gotv' boosts turnout but only counts in the final 2 weeks\n"
-            f"      target_segment is one of: {', '.join(SEGMENTS)}\n"
-            f"  log(note): record reasoning, no effect\n"
-            f"  advance_week: settles the week, drops a poll, returns reward = change in expected share.\n\n"
-            f"Reward = change in expected vote share each week. Cumulative reward = final share - baseline."
-        ))]
+            f"You are running the ground game for {self.candidate} in {self.race_id}. "
+        f"You have {self.weeks_total} weeks until election day. Starting share: {self.baseline_share:.3f}. "
+        f"There are {len(self.precincts)} precincts.\n\n"
+        f"You must complete all {self.weeks_total} weeks. Do not stop before week {self.weeks_total}. "
+        f"After every action, immediately take the next action. Never wait for confirmation. "
+        f"Your job is to maximise final vote share. Each canvasser becomes productive after a week of training and contributes ~{HOURS_PER_CANVASSER} hours/wk at full productivity.\n\n"
+        f"Tools:\n"
+        f"  view_state: current week, hires, hours, latest poll\n"
+        f"  view_precinct(id): demographics + segment mix for one precinct\n"
+        f"  hire_canvassers(count): hires; productive next week\n"
+        f"  assign_canvassers(precinct_id, hours, mode, target_segment): deploy hours\n"
+        f"      mode='persuasion' shifts swing voters; effect decays with 3-week half-life\n"
+        f"      mode='gotv' boosts turnout but only counts in the final 2 weeks\n"
+        f"      target_segment is one of: {', '.join(SEGMENTS)}\n"
+        f"  log(note): record reasoning, no effect\n"
+        f"  advance_week: settles the week, drops a poll, returns reward = change in expected share\n\n"
+        f"Strategy: hire early so canvassers are productive; persuade swing voters in mid-campaign; "
+        f"do GOTV on hard_sup_low in the final 2 weeks.\n\n"
+        f"Reward = change in expected vote share each week. "
+        f"Begin now by viewing your state, then act. Continue until week {self.weeks_total}."
+    ))]
+        
 
     # ---- tools ----
 
