@@ -223,7 +223,6 @@ class Door2Door(Environment):
             f"      target_segment one of: {', '.join(SEGMENTS)}\n"
             f"  log(note): record reasoning\n"
             f"  advance_week: settle the week, drop a poll, return reward\n\n"
-            f"Strategy hint: hire early, persuade swing voters mid-campaign, GOTV low_prop_sup in the final 2 weeks.\n"
             f"Reward = change in expected vote share each week. Begin now."
         ))]
 
