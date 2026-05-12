@@ -2,39 +2,33 @@
 
 A long-horizon RL environment that tests whether agents can run an effective ground-game allocation for a competitive US House race.
 
-The agent has 12 weeks until election day. It hires canvassers, allocates their hours across voter segments, and chooses whether to persuade swing voters or mobilise low-propensity supporters. The reward each week is the agent's cumulative progress above baseline — how far its decisions have moved the expected vote share. The simulator is calibrated to published causal estimates from the political science literature, with persuasion effects from Kalla and Broockman's 2018 meta-analysis of 49 field experiments, GOTV effects from Gerber and Green's 2000 New Haven study, and salience damping from Bhatti et al. 2024.
+The agent has 12 weeks until election day. It hires canvassers, allocates their hours across voter segments, and chooses whether to persuade swing voters or mobilise low-propensity supporters. The reward each week is the agent's cumulative progress above baseline how far its decisions have moved the expected vote share. The simulator is calibrated to published causal estimates from the political science literature, with persuasion effects from Kalla and Broockman's 2018 meta-analysis of 49 field experiments, GOTV effects from Gerber and Green's 2000 New Haven study, and salience damping from Bhatti et al. 2024.
 
 ## Why this is interesting
 
-Door-to-door canvassing is one of the few campaign tactics with rigorous, RCT-grade causal evidence. Persuasion barely works in general elections, GOTV only works inside a narrow window before election day, and the timing of contact matters more than total volume. The agent has to discover all of this through experimentation within the episode. Frontier models tend to fail by hiring canvassers too late, persuading hard partisans, or running GOTV too early.
+Door-to-door canvassing is one of the few campaign tactics with rigorous, RCT-grade causal evidence. Persuasion barely works in general elections, GOTV only works inside a narrow window before election day, and the timing of contact matters more than total volume. The agent has to discover all of this through experimentation within the episode, with no strategy hints in the prompt. Frontier models tend to fail by hiring canvassers too late, persuading hard partisans, or running GOTV too early.
 
-## Results
+## Strategy reference points
 
-Claude Sonnet 4.5 on IA-03 2018 (Axne vs Young, seed 0):
+Deterministic non-LLM strategies run against the simulator on IA-03 2018, seed 0. These set the headroom an agent has to navigate and show that the environment discriminates between good and bad policies.
 
-| Week | Action | Reward | Poll |
-|---|---|---|---|
-| 0 | Hired 150 canvassers | +0.0000 | 0.496 |
-| 1 | Hired 100 more, persuasion on swing | +0.0000 | 0.477 |
-| 2 | Persuasion on swing (1,053 contacts) | +0.0017 | 0.456 |
-| 3 | Persuasion on swing (1,843 contacts) | +0.0042 | 0.467 |
-| 4 | Persuasion on swing (3,336 contacts) | +0.0086 | 0.483 |
-| 5 | Persuasion on swing (3,862 contacts) | +0.0129 | 0.501 |
-| 6 | Persuasion on swing (4,389 contacts) | +0.0172 | 0.525 |
-| 7 | Persuasion on swing (4,389 contacts) | +0.0205 | 0.554 |
-| 8 | Persuasion on swing (4,389 contacts) | +0.0232 | 0.510 |
-| 9 | Pivoted to soft_sup persuasion | +0.0253 | 0.516 |
-| 10 | GOTV on low_prop_sup (3,015 contacts) | +0.0212 | 0.474 |
-| 11 | GOTV on low_prop_sup (3,015 contacts) | +0.0258 | 0.569 |
-| 12 | GOTV on low_prop_sup (3,015 contacts) | +0.0300 | **0.526** |
+| Strategy | Final share | vs baseline 49.6% |
+|---|---|---|
+| Ceiling (hire 300 wk 0, persuade swing 1-9, GOTV 10-11) | 53.8% | +4.2pp |
+| Three-phase optimal | 52.1% | +2.5pp |
+| GOTV starting week 1 | 50.8% | +1.2pp |
+| Persuade hard opp every week | 49.0% | −0.6pp |
+| Lazy (hire only, never assign) | 49.5% | −0.1pp |
 
-- Baseline: 49.6% → Final: 52.6% (+3.0pp)
-- The agent independently discovered the optimal three-phase structure: hire early, persuade swing mid-campaign, GOTV low-propensity supporters in the final two weeks
-- Rewards grew steadily through the persuasion phase, dipped when the agent pivoted segments (old contacts decaying), then spiked when GOTV landed in the final window
+The roughly 5-point ceiling-to-failure gap is what an agent must navigate. Hiring without assigning hours is a no-op; persuading the wrong segment is actively harmful; GOTV is wasted outside the final two-week window.
+
+Multi-model rollouts (Claude, GPT, Gemini) on the held-out test split are forthcoming. The harness lives at `rollout_multi.py`.
 
 ## Data
 
-The environment uses `groundgame_dataset.csv`, a dataset of 97 competitive US House races from 2002 to 2024 with 42 fields per race. Election results are sourced from MIT Election Data and Science Lab public returns. Demographic and voter segment fields are calibrated to realistic distributions from ACS and voter-file aggregates. Canvassing operational parameters come from the field experiment literature.
+The environment uses `groundgame_dataset.csv`, a dataset of 97 competitive US House races from 2002 to 2024 with 42 fields per race. Final vote totals are sourced from MIT Election Data and Science Lab public returns. Demographic and voter segment fields are calibrated to realistic distributions from ACS and voter-file aggregates. Canvassing operational parameters come from the field experiment literature.
+
+The `dem_share` column is a pre-campaign baseline not the historical election outcome. For competitive races, baselines are calibrated to the generic-ballot midpoint of the campaign period, intentionally below the final result so the simulator has room to model campaign-driven movement. Final historical outcomes are available in the underlying MIT EDSL returns; we use them only for race selection, not as the baseline the agent starts from.
 
 95 races are for training, 2 for testing. Each race runs with 3 random seeds, giving 285 train tasks and 6 test tasks.
 
@@ -65,11 +59,12 @@ python rollout.py
 
 ```
 door2door/
-  server.py               environment definition, simulator, tools
+  server.py                environment definition, simulator, tools
   groundgame_dataset.csv   97 competitive US House races, 2002-2024
   Dockerfile               container build for OpenReward
   requirements.txt
-rollout.py                 runs a model against the deployed env
+rollout.py                 runs Claude against the deployed env (single task)
+rollout_multi.py           runs multiple models across the test split
 test_env.py                quick connection check
 ```
 
@@ -85,7 +80,7 @@ Train (95 races x 3 seeds = 285 tasks). Test (2 races x 3 seeds = 6 tasks): CO-0
 r_t = E_t[vote_share] - baseline_share
 ```
 
-Dense reward computed every `advance_week` call. Each week's reward is the agent's current expected vote share minus its starting baseline — positive means the agent has improved the position, negative means it's lost ground. Persuasion contacts decay with a 3-week half-life; GOTV contacts only count in the final 2-week window. Final-week share includes one noise draw (σ = 0.02) for election-day variance. No LLM grader.
+Dense reward computed every `advance_week` call. Each week's reward is the agent's current expected vote share minus its starting baseline positive means the agent has improved the position, negative means it's lost ground. Persuasion contacts decay with a 3-week half-life; GOTV contacts only count in the final 2-week window. Final-week share includes one noise draw (σ = 0.02) for election-day variance. No LLM grader.
 
 ## Voter segments
 
@@ -118,6 +113,12 @@ Dense reward computed every `advance_week` call. Each week's reward is the agent
 - Salience damping: 0.5x
 - Poll noise: σ = 0.02
 
+## Known limitations
+
+- **Symmetric party support is partial.** The CSV stores `pct_low_prop_dem` only; running as the Republican party uses this as a proxy. A full v2 would add `pct_low_prop_rep`.
+- **No budget constraint.** Hiring is free, so the dominant strategy is to over-hire. Adding a normalised cost-per-canvasser to the reward would make the optimisation closer to real campaign economics.
+- **Full information at the start.** The agent receives exact segment shares, doors-per-hour, and contact rate in the initial prompt. Real campaigns learn these over the first week. A "fog of war" variant where these sharpen with contacts would test online learning.
+
 ## Citations
 
 Kalla, J. L., and Broockman, D. E. (2018). The Minimal Persuasive Effects of Campaign Contact in General Elections: Evidence from 49 Field Experiments. *American Political Science Review* 112(1), 148-166.
@@ -130,4 +131,4 @@ Bhatti, Y. et al. (2024). A meta-analysis of voter mobilization tactics by elect
 
 ---
 
-**With no prior training and no knowledge of political science, Claude independently discovered the same three-phase ground-game strategy that real campaigns spend millions learning: hire early, persuade the middle, and mobilise your base at the end — turning a losing 49.6% into a winning 52.6% in 48 tool calls.**
+**The agent receives no strategy hints. With no prior training and no knowledge of political science, frontier models must discover the three-phase ground-game structure that real campaigns spend millions learning: hire early, persuade the middle, and mobilise your base at the end. Failure modes are real hire too late, persuade hard partisans, or run GOTV too early, and the agent loses ground against its own baseline.**
